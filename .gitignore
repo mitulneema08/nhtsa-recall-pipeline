@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# GCP credentials — never commit these, ever
+*-key.json
+*.json.key
+.env
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
