@@ -2,15 +2,51 @@ version: 2
 
 models:
   - name: stg_recalls
-    description: "Cleaned, typed, current-state view of NHTSA recall data — snake_case columns, sourced from recalls_snapshot."
+    description: "Cleaned, typed, current-state view of NHTSA recall data — snake_case columns, sourced from recalls_snapshot (dbt_valid_to is null = current version of each row)."
     columns:
       - name: campaign_number
-        description: "NHTSA's unique recall campaign identifier."
+        description: "Full NHTSA recall campaign identifier — 2-digit year + 'V' + 6-digit sequence (e.g. 24V635000). Sequence is allocated in blocks of 1000, so it always ends in 000."
         tests:
           - not_null
+      - name: recall
+        description: "Trimmed, human-readable version of campaign_number with the block-of-1000 padding removed (e.g. 24V635) — matches internal recall-number convention."
+      - name: action_number
+        description: "NHTSA's internal action number for this recall filing."
+      - name: make
+        description: "Vehicle make (e.g. FORD)."
       - name: model
+        description: "Vehicle model covered by this recall."
         tests:
           - not_null
+      - name: model_year
+        description: "Model year of the vehicle covered by this recall."
+      - name: manufacturer
+        description: "Full manufacturer name as reported to NHTSA — may differ slightly in format from make (e.g. 'Ford Motor Company')."
+      - name: component
+        description: "The vehicle component affected by the recall (e.g. STEERING, AIR BAGS)."
+      - name: summary
+        description: "NHTSA's description of the defect or non-compliance driving this recall."
+      - name: consequence
+        description: "The safety risk this recall's defect could cause if left unremedied."
+      - name: remedy
+        description: "How the manufacturer/dealer will fix the affected vehicles."
+      - name: notes
+        description: "Additional free-text notes from NHTSA, not always populated."
       - name: report_received_date
+        description: "Date NHTSA received the recall report from the manufacturer."
         tests:
           - not_null
+      - name: over_the_air_update
+        description: "Whether this recall can be fully remedied via an over-the-air software update, without a dealer visit."
+      - name: park_outside
+        description: "Whether NHTSA advises owners to park the vehicle outside pending repair (typically fire-risk recalls)."
+      - name: park_it
+        description: "Whether NHTSA advises owners to stop driving the vehicle entirely until repaired — a 'do not drive' flag."
+      - name: pulled_model
+        description: "Pipeline provenance metadata — the vehicle model our ingestion DAG queried for when this record was pulled."
+      - name: pulled_model_year
+        description: "Pipeline provenance metadata — the model year our ingestion DAG queried for when this record was pulled."
+      - name: snapshot_valid_from
+        description: "dbt snapshot metadata — the date this specific version of the row became the current version."
+      - name: snapshot_id
+        description: "dbt snapshot metadata — a stable unique identifier for this specific version of the row."

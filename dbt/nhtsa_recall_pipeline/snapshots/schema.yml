@@ -1,0 +1,9 @@
+version: 2
+
+snapshots:
+  - name: recalls_snapshot
+    description: >
+      SCD Type 2 history table over raw_recalls. Captures every version of a
+      recall record over time using a full-row check strategy, since NHTSA's
+      data has no reliable last-modified column. Keyed on a composite of
+      campaign number and model, since one campaign can cover multiple models.
