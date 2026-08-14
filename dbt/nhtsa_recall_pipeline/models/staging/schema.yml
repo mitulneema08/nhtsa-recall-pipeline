@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_recalls
+    description: "Cleaned, typed, current-state view of NHTSA recall data — snake_case columns, sourced from recalls_snapshot."
+    columns:
+      - name: campaign_number
+        description: "NHTSA's unique recall campaign identifier."
+        tests:
+          - not_null
+      - name: model
+        tests:
+          - not_null
+      - name: report_received_date
+        tests:
+          - not_null
