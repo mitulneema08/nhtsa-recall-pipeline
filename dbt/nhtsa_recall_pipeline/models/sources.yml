@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: nhtsa_silver
+    schema: nhtsa_silver
+    tables:
+      - name: raw_recalls
+        description: "Raw NHTSA recall data landed daily by Airflow via WRITE_TRUNCATE — reflects only the latest pull, no history on its own."
