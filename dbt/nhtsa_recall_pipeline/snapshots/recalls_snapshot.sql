@@ -11,5 +11,9 @@
 
 select *
 from {{ source('nhtsa_silver', 'raw_recalls') }}
+qualify row_number() over (
+    partition by NHTSACampaignNumber, Model
+    order by ReportReceivedDate desc
+) = 1
 
 {% endsnapshot %}

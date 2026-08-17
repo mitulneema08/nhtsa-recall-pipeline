@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from airflow.decorators import dag, task
+from airflow.operators.bash import BashOperator
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
+from airflow.providers.google.cloud.hooks.pubsub import PubSubHook
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
 from datetime import datetime
 import requests
@@ -11,6 +14,8 @@ FORD_MODELS = ["f-150", "explorer", "escape", "mustang", "edge"]
 MODEL_YEARS = [2022, 2023, 2024, 2025, 2026]
 BUCKET_NAME = "nhtsa-recall-pipeline-bronze"
 PROJECT_ID = "nhtsa-recall-pipeline"
+DBT_PROJECT_DIR = "/opt/airflow/dbt_project"
+
 
 @dag(
     dag_id="nhtsa_recall_ingestion",
@@ -68,7 +73,48 @@ def nhtsa_recall_ingestion():
         gcp_conn_id="google_cloud_default",
     )
 
-    upload_to_bronze(fetch_recalls()) >> load_to_bigquery
+    run_dbt_snapshot = BashOperator(
+        task_id="run_dbt_snapshot",
+        bash_command=f"cd {DBT_PROJECT_DIR} && dbt snapshot",
+    )
+
+    run_dbt_models = BashOperator(
+        task_id="run_dbt_models",
+        bash_command=f"cd {DBT_PROJECT_DIR} && dbt run",
+    )
+
+    @task
+    def publish_change_events(ds: str = None):
+        bq_hook = BigQueryHook(gcp_conn_id="google_cloud_default", use_legacy_sql=False, location="us-central1")
+        query = f"""
+            select
+                NHTSACampaignNumber as campaign_number,
+                substr(NHTSACampaignNumber, 1, length(NHTSACampaignNumber) - 3) as recall,
+                Model as model,
+                Manufacturer as manufacturer
+            from `{PROJECT_ID}.nhtsa_silver.recalls_snapshot`
+            where date(dbt_valid_from) = '{ds}'
+        """
+        records = bq_hook.get_records(query)
+
+        pubsub_hook = PubSubHook(gcp_conn_id="google_cloud_default")
+        for campaign_number, recall, model, manufacturer in records:
+            message = {
+                "campaign_number": campaign_number,
+                "recall": recall,
+                "model": model,
+                "manufacturer": manufacturer,
+                "event_type": "new_or_changed_recall",
+                "event_time": datetime.utcnow().isoformat(),
+            }
+            pubsub_hook.publish(
+                project_id=PROJECT_ID,
+                topic="recall-updates",
+                messages=[{"data": json.dumps(message).encode("utf-8")}],
+            )
+        print(f"Published {len(records)} change events.")
+
+    upload_to_bronze(fetch_recalls()) >> load_to_bigquery >> run_dbt_snapshot >> run_dbt_models >> publish_change_events()
 
 
 nhtsa_recall_ingestion()
