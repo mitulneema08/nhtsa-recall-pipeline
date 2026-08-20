@@ -1,5 +1,5 @@
 resource "google_pubsub_topic" "recall_updates" {
-  name = "recall-updates"
+  name    = "recall-updates"
   project = var.project_id
 }
 
@@ -19,7 +19,7 @@ resource "google_bigquery_table" "streaming_recall_events" {
 }
 
 data "google_project" "current" {
-    project_id = var.project_id
+  project_id = var.project_id
 }
 
 resource "google_bigquery_dataset_iam_member" "pubsub_bq_writer" {
@@ -30,8 +30,8 @@ resource "google_bigquery_dataset_iam_member" "pubsub_bq_writer" {
 }
 
 resource "google_pubsub_subscription" "recall_updates_to_bq" {
-  name  = "recall-updates-to-bq"
-  topic = google_pubsub_topic.recall_updates.name
+  name    = "recall-updates-to-bq"
+  topic   = google_pubsub_topic.recall_updates.name
   project = var.project_id
 
   bigquery_config {
